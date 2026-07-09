@@ -46,7 +46,7 @@ class DatasetBuilder(Dataset):
         return features, label
 
 
-class Model(nn.Module):
+class Model(nnx.Module):
     def __init__(self, input_dim: int, output_dim: int, rngs: nnx.Rngs):
         self.linear = nnx.Linear(input_dim, output_dim, rngs=rngs)
 
@@ -69,22 +69,22 @@ class Config:
     checkpoint_dir: str = "./checkpoints"
 
 
-# nnx.jit compiles the functional split-run-merge cycle to run updates in place on mutable classes.
-# jax compilation requires pure functions (no side effects). nnx achieves this by internally splitting
-# model state into static graph structures and dynamic param dicts before running compiled code.
+# JAX compiles math operations into optimized machine code (XLA), which requires pure functions (no side effects)
+# nnx.jit lets us write PyTorch-style stateful classes by converting them to stateless data structures (PyTrees) before compiling
+# then merging the updated parameter values back into the mutable Python instances in-place.
 @nnx.jit
 def train_step(model: Model, optimizer: nnx.Optimizer, batch):
-    # defines loss computation relative to the model instance.
-    # jax value_and_grad requires a function that takes variable parameters as its first argument.
+    # loss_fn must take the model instance as its first argument because JAX's gradient calculation (value_and_grad)
+    # operates by tracking operations performed on the first argument of the function
     def loss_fn(model):
         preds = model(batch["x"])
-        # mean squared error loss
+        # optax expects integer class labels (like 0, 1, 2) rather than one-hot encoded vectors (like [1, 0, 0])
         loss = jnp.mean((preds - batch["y"]) ** 2)
         return loss, preds
     
     # nnx value_and_grad handles extracting params from the module and returns loss + gradients
     (loss, preds), grads = nnx.value_and_grad(loss_fn, has_aux=True)(model)
-    # applies gradients to optimizer state. because of nnx.jit, this mutates self.optimizer/self.model in-place
+    # applies calculated gradients to update the model parameters wrapped inside the optimizer.
     optimizer.update(grads)
     
     # mean absolute error compilation

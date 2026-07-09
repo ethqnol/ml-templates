@@ -142,7 +142,6 @@ class Trainer:
             # optimizer step is only called if gradients contain no NaNs/Infs (which can happen if scaling was too high)
             if self.use_gpu_feat:
                 self.scaler.step(self.optimizer)
-                # adjust scaling factor down if updates were skipped due to NaNs, or up if training has been stable
                 self.scaler.update()
             else:
                 # normal weight update when not using mixed precision scaling
@@ -181,28 +180,39 @@ class Trainer:
         return val_loss, val_mae
 
     def train(self):
+        # track the best validation loss seen so far to decide when to save checkpoints
         best_val_loss = float('inf')
         epochs_without_improvement = 0
 
+        # main training loop over the configured number of epochs
         for epoch in range(1, self.config.epochs + 1):
+            # run one full pass over the training data to update model weights
             train_loss, train_mae = self.train_epoch()
+            # run one full pass over the validation data to see how the model generalizes
             val_loss, val_mae = self.validate()
             
+            # decay the learning rate according to our scheduler schedule after each epoch
             self.scheduler.step()
             current_lr = self.optimizer.param_groups[0]['lr']
 
+            # print the epoch results to monitor progress in the console
             print(f"Epoch [{epoch:02d}/{self.config.epochs:02d}] | LR: {current_lr:.6f}")
             print(f"  [TRAIN] MSE Loss: {train_loss:.4f} | MAE: {train_mae:.4f}")
             print(f"  [VALID] MSE Loss: {val_loss:.4f} | MAE: {val_mae:.4f}")
 
+            # if the validation loss drops to a new low, save the model state
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
+                # save only the parameters (weights and biases) to disk
                 torch.save(self.model.state_dict(), os.path.join(self.config.checkpoint_dir, "best_model.pt"))
                 print("  --> Saved new checkpoint.")
+                # reset the patience counter since validation loss improved
                 epochs_without_improvement = 0
             else:
+                # increment the patience counter because validation loss did not improve
                 epochs_without_improvement += 1
 
+            # stop training early if validation loss fails to improve for patience consecutive epochs
             if epochs_without_improvement >= self.config.patience:
                 print(f"Early stopping: no improvement for {self.config.patience} epochs.")
                 break
