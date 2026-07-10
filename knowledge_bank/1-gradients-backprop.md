@@ -24,38 +24,65 @@ Backpropagation is how neural networks compute gradients, and it is built on the
 
 ### The Intuition: A Chain Reaction
 If $A$ affects $B$, and $B$ affects $C$, the chain rule calculates how a change in $A$ impacts $C$ by multiplying the intermediate rates of change:
-$$\text{Rate of change of } C \text{ relative to } A = (\text{Rate of change of } C \text{ relative to } B) \times (\text{Rate of change of } B \text{ relative to } A)$$
+
+$$
+\text{Rate of change of } C \text{ relative to } A = (\text{Rate of change of } C \text{ relative to } B) \times (\text{Rate of change of } B \text{ relative to } A)
+$$
 
 Think of three connected gears: **Gear A**, **Gear B**, and **Gear C**.
 * Turning Gear A once makes Gear B spin twice ($\frac{\partial B}{\partial A} = 2$).
 * Turning Gear B once makes Gear C spin three times ($\frac{\partial C}{\partial B} = 3$).
 
 How much does Gear C turn if you spin Gear A once?
-$$\frac{\partial C}{\partial A} = \frac{\partial C}{\partial B} \cdot \frac{\partial B}{\partial A} = 3 \times 2 = 6 \text{ turns}$$
+
+$$
+\frac{\partial C}{\partial A} = \frac{\partial C}{\partial B} \cdot \frac{\partial B}{\partial A} = 3 \times 2 = 6 \text{ turns}
+$$
+
 Multiplying these gear ratios (local derivatives) gives the overall rate of change.
 
 ### Math Example
 For an input $x$, intermediate step $y$, and loss $L$:
-$$y = 3x \quad \text{and} \quad L = y^2$$
+
+$$
+y = 3x \quad \text{and} \quad L = y^2
+$$
 
 To find how $L$ changes relative to $x$ ($\frac{\partial L}{\partial x}$):
 
 1. **Direct Substitution**:
    Combine the formulas first: $L = (3x)^2 = 9x^2$.
    Take the derivative:
-   $$\frac{\partial L}{\partial x} = 18x$$
+
+   $$
+   \frac{\partial L}{\partial x} = 18x
+   $$
 
 2. **Using the Chain Rule**:
    First, calculate the local derivatives layer-by-layer:
    * How $L$ changes w.r.t $y$:
-     $$\frac{\partial L}{\partial y} = 2y$$
+
+     $$
+     \frac{\partial L}{\partial y} = 2y
+     $$
+
    * How $y$ changes w.r.t $x$:
-     $$\frac{\partial y}{\partial x} = 3$$
+
+     $$
+     \frac{\partial y}{\partial x} = 3
+     $$
    
    Multiply them:
-   $$\frac{\partial L}{\partial x} = \frac{\partial L}{\partial y} \cdot \frac{\partial y}{\partial x} = (2y) \cdot 3 = 6y$$
+
+   $$
+   \frac{\partial L}{\partial x} = \frac{\partial L}{\partial y} \cdot \frac{\partial y}{\partial x} = (2y) \cdot 3 = 6y
+   $$
+
    Substitute $y = 3x$ back:
-   $$\frac{\partial L}{\partial x} = 6(3x) = 18x$$
+
+   $$
+   \frac{\partial L}{\partial x} = 6(3x) = 18x
+   $$
 
 Both approaches give the same result. But in a neural network with millions of parameters across hundreds of layers, substituting equations directly is impossible. The chain rule allows PyTorch to compute local derivatives for each layer independently, then multiply them together to get the final gradient. 
 
